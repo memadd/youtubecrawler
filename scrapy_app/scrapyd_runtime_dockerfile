@@ -1,0 +1,5 @@
+FROM vimagick/scrapyd
+
+COPY ./requirements.txt /requirements.txt
+RUN set -xe \
+    && pip install -r /requirements.txt

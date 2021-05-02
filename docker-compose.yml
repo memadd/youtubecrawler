@@ -1,0 +1,79 @@
+version: '3.3' 
+services:
+  scrapyd:
+    build:
+          context: ./scrapy_app
+          dockerfile: scrapyd_runtime_dockerfile
+    ports:
+      - "6800:6800"
+    volumes:
+      - ./scrapyd_data:/var/lib/scrapyd
+      - ./scrapyd_conf:/etc/scrapyd
+      - ./scrapy_app:/code
+      - ./images:/images
+    working_dir: /code/youtube
+    links:
+      - splash
+      - mongodb
+    depends_on:
+          - mongodb
+          - splash
+    restart: always
+
+  splash:
+    image: scrapinghub/splash
+    command: --max-timeout 3600 --slots 10 --verbosity 1 --disable-private-mode
+    ports:
+      - "5023:5023"
+      - "8050:8050"
+      - "8051:8051"
+    expose:
+      - 8050
+    links:
+      - tor
+    volumes:
+      - ./proxy-profiles:/etc/splash/proxy-profiles:ro
+      - ./filters:/etc/splash/filters:ro
+
+    restart: always
+  
+  tor:
+        image: jess/tor-proxy
+        expose:
+            - 9050
+        logging:
+            driver: "none"
+        restart: always
+
+  mongodb:
+    image: 'mongo:3.4.1'
+    ports:
+      - '27017:27017'
+    volumes:
+      - './mongo_data:/data/db'
+
+  rabbit:
+      hostname: rabbit
+      image: rabbitmq:latest
+      environment:
+          - RABBITMQ_DEFAULT_USER=admin
+          - RABBITMQ_DEFAULT_PASS=mypass
+      ports:
+          - "5672:5672"
+
+  celery:
+      build:
+          context: ./celery_app
+          dockerfile: celery_dockerfile
+      volumes:
+          - ./celery_app:/app
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /cgroup:/cgroup
+          - /sys:/sys
+          - /usr/bin/docker:/usr/bin/docker
+      links:
+          - rabbit
+          - scrapyd
+      depends_on:
+          - rabbit
+          - scrapyd
