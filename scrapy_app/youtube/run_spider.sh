@@ -1,1 +1,1 @@
-scrapy crawl channel_webzero -a domain="$@"
+scrapy crawl channel -a domain="$@"
